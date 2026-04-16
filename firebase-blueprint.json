@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile information and theme settings",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Display name" },
+        "bio": { "type": "string", "description": "Short biography" },
+        "avatarUrl": { "type": "string", "description": "URL to profile picture" },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "background": { "type": "string" },
+            "textColor": { "type": "string" },
+            "cardBackground": { "type": "string" },
+            "cardTextColor": { "type": "string" }
+          },
+          "required": ["background", "textColor", "cardBackground", "cardTextColor"]
+        }
+      },
+      "required": ["name", "bio", "avatarUrl", "theme"]
+    },
+    "Link": {
+      "title": "Link",
+      "description": "A social or action link",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "icon": { "type": "string" },
+        "buttonText": { "type": "string" },
+        "type": { "type": "string", "enum": ["social", "action"] },
+        "order": { "type": "number" },
+        "active": { "type": "boolean" },
+        "color": { "type": "string" }
+      },
+      "required": ["title", "url", "icon", "type", "order", "active"]
+    }
+  },
+  "firestore": {
+    "/settings/profile": {
+      "schema": "Profile",
+      "description": "Global profile settings"
+    },
+    "/links/{linkId}": {
+      "schema": "Link",
+      "description": "Collection of links"
+    }
+  }
+}

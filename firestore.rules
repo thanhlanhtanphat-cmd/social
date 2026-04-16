@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: settings/profile
+    // Fields:
+    //   - name: string (required)
+    //   - bio: string (required)
+    //   - avatarUrl: string (required)
+    //   - theme: map (required)
+    //     - background: string
+    //     - textColor: string
+    //     - cardBackground: string
+    //     - cardTextColor: string
+    //
+    // Collection: links
+    // Fields:
+    //   - title: string (required)
+    //   - url: string (required)
+    //   - icon: string (required)
+    //   - buttonText: string (optional)
+    //   - type: string (required, 'social' | 'action')
+    //   - order: number (required)
+    //   - active: bool (required)
+    //   - color: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "thanhlanh.tanphat@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidProfile(data) {
+      return data.keys().hasAll(['name', 'bio', 'avatarUrl', 'theme']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.bio is string && data.bio.size() < 500 &&
+             data.avatarUrl is string && data.avatarUrl.size() < 1000 &&
+             data.theme is map &&
+             data.theme.keys().hasAll(['background', 'textColor', 'cardBackground', 'cardTextColor']) &&
+             data.theme.background is string &&
+             data.theme.textColor is string &&
+             data.theme.cardBackground is string &&
+             data.theme.cardTextColor is string;
+    }
+
+    function isValidLink(data) {
+      return data.keys().hasAll(['title', 'url', 'icon', 'type', 'order', 'active']) &&
+             data.title is string && data.title.size() < 100 &&
+             data.url is string && data.url.size() < 1000 &&
+             data.icon is string &&
+             data.type in ['social', 'action'] &&
+             data.order is number &&
+             data.active is bool &&
+             (!('buttonText' in data) || (data.buttonText is string && data.buttonText.size() < 50)) &&
+             (!('color' in data) || (data.color is string && data.color.size() < 50));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Allow anyone to read the profile and links for the public page
+    match /settings/profile {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidProfile(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /links/{linkId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidLink(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // User roles for admin bootstrapping
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
