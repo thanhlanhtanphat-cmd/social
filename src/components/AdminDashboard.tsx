@@ -381,6 +381,7 @@ export default function AdminDashboard({ profile, setProfile, links, setLinks, u
                                             <option value="github">Github</option>
                                             <option value="linkedin">Linkedin</option>
                                             <option value="youtube">Youtube</option>
+                                            <option value="tiktok">TikTok</option>
                                             <option value="globe">Globe</option>
                                             <option value="website">Website</option>
                                             <option value="phone">Phone</option>
