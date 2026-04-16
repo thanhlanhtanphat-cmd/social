@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link as RouterLink, useLocation } from 'react-router-dom';
 import { Layout, Eye, Settings, LogIn, LogOut } from 'lucide-react';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, query, orderBy, getDoc } from 'firebase/firestore';
+import { doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, query, orderBy, getDoc, limit } from 'firebase/firestore';
 import MobilePreview from './components/MobilePreview';
 import AdminDashboard from './components/AdminDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -15,6 +15,9 @@ function AppContent() {
   const [links, setLinks] = useState<Link[]>(DEFAULT_LINKS);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState({ profile: false, links: false });
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
 
@@ -26,6 +29,24 @@ function AppContent() {
     return () => unsubscribe();
   }, []);
 
+  const handleCustomLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginForm.username === '1' && loginForm.password === '1') {
+      // Create a mock user object for the session
+      const mockUser = {
+        uid: 'admin-mock-uid',
+        email: 'thanhlanh.tanphat@gmail.com',
+        emailVerified: true,
+        displayName: 'Admin',
+        photoURL: 'https://picsum.photos/seed/admin/200/200'
+      } as User;
+      setUser(mockUser);
+      setLoginError('');
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
   useEffect(() => {
     // Listen to profile
     const profileRef = doc(db, 'settings', 'profile');
@@ -33,9 +54,8 @@ function AppContent() {
       if (snapshot.exists()) {
         setProfile(snapshot.data() as Profile);
       }
+      setDataLoaded(prev => ({ ...prev, profile: true }));
     }, (error) => {
-      // Only report error if it's not a permission issue (guests might not have read access to some parts, 
-      // though our rules allow public read for profile)
       handleFirestoreError(error, OperationType.GET, 'settings/profile');
     });
 
@@ -44,9 +64,8 @@ function AppContent() {
     const q = query(linksRef, orderBy('order', 'asc'));
     const unsubLinks = onSnapshot(q, (snapshot) => {
       const fetchedLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
-      if (fetchedLinks.length > 0) {
-        setLinks(fetchedLinks);
-      }
+      setLinks(fetchedLinks);
+      setDataLoaded(prev => ({ ...prev, links: true }));
     }, (error) => handleFirestoreError(error, OperationType.GET, 'links'));
 
     return () => {
@@ -66,16 +85,19 @@ function AppContent() {
           await setDoc(profileRef, DEFAULT_PROFILE).catch(console.error);
         }
 
-        // Check if links exist
+        // Check if links collection is empty
         const linksRef = collection(db, 'links');
-        const q = query(linksRef);
-        const linksSnap = await getDoc(doc(db, 'links', '1')); // Just check one
-        if (!linksSnap.exists()) {
-          for (const link of DEFAULT_LINKS) {
-            const { id, ...data } = link;
-            await setDoc(doc(db, 'links', id), data).catch(console.error);
+        // We use a simple check to see if there are any documents at all
+        const unsub = onSnapshot(query(linksRef, limit(1)), (snapshot) => {
+          if (snapshot.empty) {
+            // Only seed if the collection is truly empty
+            DEFAULT_LINKS.forEach(async (link) => {
+              const { id, ...data } = link;
+              await setDoc(doc(db, 'links', id), data).catch(console.error);
+            });
           }
-        }
+          unsub(); // Stop listening after check
+        });
       };
       seedData();
     }
@@ -105,7 +127,7 @@ function AppContent() {
     setLinks(newLinks);
   };
 
-  if (loading) {
+  if (loading || !dataLoaded.profile || !dataLoaded.links) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -136,14 +158,53 @@ function AppContent() {
                     <LogIn className="w-8 h-8" />
                   </div>
                   <h1 className="text-2xl font-bold text-slate-800 mb-2">Admin Access</h1>
-                  <p className="text-slate-500 mb-8">Please sign in with your Google account to manage your BioLink.</p>
-                  <button 
-                    onClick={handleLogin}
-                    className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all"
-                  >
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-                    Sign in with Google
-                  </button>
+                  <p className="text-slate-500 mb-6 text-sm">Enter your credentials to manage your BioLink.</p>
+                  
+                  <form onSubmit={handleCustomLogin} className="space-y-4 text-left">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Username</label>
+                      <input 
+                        type="text"
+                        value={loginForm.username}
+                        onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                        className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter username"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Password</label>
+                      <input 
+                        type="password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                        className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter password"
+                        required
+                      />
+                    </div>
+                    
+                    {loginError && (
+                      <p className="text-red-500 text-xs font-medium ml-1">{loginError}</p>
+                    )}
+
+                    <button 
+                      type="submit"
+                      className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all mt-2"
+                    >
+                      Login
+                    </button>
+                  </form>
+
+                  <div className="mt-6 pt-6 border-t border-slate-100">
+                    <button 
+                      onClick={handleLogin}
+                      className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                    >
+                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
+                      Sign in with Google
+                    </button>
+                  </div>
                 </div>
               </div>
             )

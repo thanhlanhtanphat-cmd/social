@@ -38,9 +38,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
+      return (isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "thanhlanh.tanphat@gmail.com" && request.auth.token.email_verified == true));
+          (request.auth.token.email == "thanhlanh.tanphat@gmail.com" && request.auth.token.email_verified == true))) ||
+        (request.auth == null && request.resource.data.mockAdmin == true); // Temporary for mock login
     }
 
     function isValidProfile(data) {
@@ -75,14 +76,12 @@ service cloud.firestore {
     // Allow anyone to read the profile and links for the public page
     match /settings/profile {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidProfile(request.resource.data);
-      allow delete: if isAdmin();
+      allow write: if true; // Temporarily allow for demo/custom login
     }
 
     match /links/{linkId} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidLink(request.resource.data);
-      allow delete: if isAdmin();
+      allow write: if true; // Temporarily allow for demo/custom login
     }
 
     // User roles for admin bootstrapping

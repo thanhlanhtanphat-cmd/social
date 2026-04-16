@@ -79,10 +79,10 @@ export const DEFAULT_LINKS: Link[] = [
   },
   {
     id: '7',
-    title: '+1-541-754-3010',
-    url: 'tel:+15417543010',
+    title: '081 491 1331',
+    url: 'tel:0814911331',
     icon: 'phone',
-    type: 'action',
+    type: 'social',
     order: 7,
     active: true,
     color: '#3b82f6'

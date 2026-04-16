@@ -12,6 +12,7 @@ import {
   Mail, 
   Heart, 
   DollarSign,
+  MapPin,
   Plus,
   Trash2,
   Edit2,
@@ -40,6 +41,8 @@ const ICON_MAP: Record<string, React.ElementType> = {
   mail: Mail,
   heart: Heart,
   dollar: DollarSign,
+  website: Layout,
+  map: MapPin,
 };
 
 interface MobilePreviewProps {
@@ -75,10 +78,15 @@ export default function MobilePreview({ profile, links }: MobilePreviewProps) {
             referrerPolicy="no-referrer"
           />
         </div>
-        <h1 className="text-2xl font-bold mb-1">{profile.name}</h1>
-        <p className="text-sm opacity-80 max-w-[280px] leading-relaxed">
-          {profile.bio}
-        </p>
+        <h1 className="text-2xl font-bold mb-4 tracking-tight">{profile.name}</h1>
+        <div className="relative px-8 py-4 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl max-w-[340px] group">
+          <p className="text-sm font-medium text-white/90 leading-relaxed">
+            {profile.bio}
+          </p>
+          {/* Subtle decorative elements */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-8 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+        </div>
       </motion.div>
 
       {/* Social Links Section */}
